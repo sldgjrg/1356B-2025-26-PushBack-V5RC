@@ -11,6 +11,10 @@ void s_drive_test();
 
 void s_drive_chain_test();
 
+void hurrs_auton();
+
+void hurrs_auton2();
+
 void drive_test();
 void turn_test();
 void swing_test();

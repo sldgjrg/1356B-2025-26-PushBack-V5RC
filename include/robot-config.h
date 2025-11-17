@@ -1,6 +1,8 @@
 #include "vex.h"
 
 using namespace vex;
+using signature = vision::signature;
+using code      = vision::code;
 
 extern brain Brain;
 extern controller master;
@@ -28,6 +30,8 @@ extern motor intake;
 //pneumatics
 extern digital_out matchloader;
 extern digital_out guard;
+extern digital_out middlegoal;
+
 
 // VEXcode devices
 

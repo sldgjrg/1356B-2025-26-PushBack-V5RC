@@ -69,12 +69,157 @@ void s_drive_test(){
   
 }
 
+void hurrs_auton() {
+
+  chassis.set_coordinates(0,0,0);
+
+  default_constants();
+
+  using namespace sdrive;
+
+  // { 
+
+  toggleMatchLoader();
+
+  spinIntake(1);
+
+  s_drive(32, 90);
+
+  wait(.25, sec);  /* ===========   Drive Forward while turning 90 degrees and get matchload then score in top goal */
+
+  spinTopRoller(1);
+
+  s_drive(-20);
+
+  stopTopRoller();
+
+  stopIntake();
+
+  // }
+
+  // {
+
+  toggleMatchLoader();
+
+  s_drive(10, 160);
+
+  spinIntake(1);
+
+  s_drive(20, 180);
+
+  s_drive(40, 200);
+
+  toggleMiddleGoal();       // ======= Curve to three blocks parallel to top goal and intake then back up curve and 
+ 
+  spinTopRoller(1);        // ======= drive straight while intaking other three and curve back score in middle goal
+
+  s_drive(-16);            // Might swap the back up for just drive straight and correct angle to 180 deg but idk
+
+  wait(.25, sec);          // Zuhayr or Jaden if ur reading this.... felt cute might delete later lol
+
+  stopTopRoller();
+
+  toggleMatchLoader();
+
+  toggleMiddleGoal();
+
+  // }
+
+  // {
+
+  s_drive(32, 90);
+
+  wait(.25, sec);
+
+  spinTopRoller(1);
+
+  s_drive(-20);        /* ===== Drive to other matchload bar and score same way as before - top goal ====== */
+
+  wait(1, sec);
+
+  stopIntake();
+
+  stopTopRoller();
+
+  // }
+
+}
+
+void hurrs_auton2() {
+    default_constants();
+
+  using namespace sdrive;
+
+  toggleMatchLoader();
+
+  spinIntake(1);
+
+  s_drive(32, 90);
+
+  wait(.25, sec);
+
+  spinTopRoller(1);
+
+  s_drive(-20);
+
+  stopTopRoller();
+
+  stopIntake();
+
+  toggleMatchLoader();
+
+  spinIntake(1);
+
+  s_drive(20, 160);
+
+  spinIntake(-1);
+
+  s_drive(-10, 180);
+
+  spinIntake(1);
+
+  s_drive(50);
+
+  s_drive(0, 200);
+
+  toggleMiddleGoal();
+
+  spinTopRoller(1);
+
+  s_drive(-16);
+
+  wait(.25, sec);
+
+  stopTopRoller();
+
+  toggleMatchLoader();
+
+  toggleMiddleGoal();
+
+  s_drive(32, 90);
+
+  wait(.25, sec);
+
+  spinTopRoller(1);
+
+  s_drive(-20);
+
+  wait(1, sec);
+
+  stopIntake();
+
+  stopTopRoller();
+
+}
+
 void s_drive_chain_test() {
   default_constants();
 
   using namespace sdrive;
 
-  s_drive(30, 280); 
+  s_drive(32);
+  
+  s_drive(20, 90);
 }
 
 void drive_test(){

@@ -3,10 +3,10 @@
 
 using namespace vex;
 
-/* ============================================================
+/*
    FULL MOTOR MANAGER RUNTIME + BRAIN UI
-   All declarations for runtime tables + BrainNav class
-   ============================================================ */
+   Public declarations for runtime tables + BrainNav class
+*/
 
 // ---------- RUNTIME TABLES (motors, alias, config) ----------
 
@@ -19,8 +19,8 @@ struct MotorRuntime {
 
 // Binding alias → vex::motor*
 struct Binding {
-    const char* name;       // alias name (string literal)
-    vex::motor* ref;        // pointer to the actual motor instance
+    const char*  name;      // alias name (string literal)
+    vex::motor*  ref;       // pointer to the actual motor instance
 };
 
 // Global runtime + binding tables
@@ -52,9 +52,9 @@ struct MotorInfo {
     const char* alias;  // alias match (same as name for extern motors)
 };
 
-// ============================================================
-//                         BRAIN NAV UI
-// ============================================================
+
+//   BRAIN NAV UI
+
 class BrainNav {
 public:
     struct TempThresholds {
@@ -69,27 +69,28 @@ public:
              TempThresholds temp = TempThresholds{},
              void (*rescanCb)() = nullptr);
 
-    void open();    // open UI (blocking)
+    // open UI (blocking until user exits with "< Back" on Home)
+    void open();
 
 private:
     enum class Screen { Home, Motors, MotorDetail, PortPicker, Confirm };
     enum class ConfirmKind { None, ToggleReverse, Reassign, ResetAll };
 
     // ----- state -----
-    Screen screen_ = Screen::Home;
+    Screen      screen_        = Screen::Home;
     ConfirmKind pendingAction_ = ConfirmKind::None;
-    int pendingInt_ = -1;
-    int selected_ = -1;
+    int         pendingInt_    = -1;
+    int         selected_      = -1;
 
-    MotorInfo* motors_;
-    int* countRef_;
+    MotorInfo*  motors_;
+    int*        countRef_;
     TempThresholds tt_;
     void (*rescan_)() = nullptr;
 
     // layout
-    int cols_ = 4;
-    int margin_ = 6;
-    int gutter_ = 6;
+    int cols_    = 4;
+    int margin_  = 6;
+    int gutter_  = 6;
     int headerH_ = 28;
 
     // ---------- internal methods ----------
@@ -112,12 +113,16 @@ private:
     const char* abbrev_(const char* name, char* buf, int bufsz) const;
 
     // grid geometry
-    void gridGeom_(int& gx, int& gy, int& gw, int& gh, int& cellW, int& cellH, int& rows) const;
+    void gridGeom_(int& gx, int& gy, int& gw, int& gh,
+                   int& cellW, int& cellH, int& rows) const;
 
     // reverse/port tools
-    bool isPortFree_(int port) const;
+    bool        isPortFree_(int port) const;
     const char* aliasForPortRT_(int port) const;
 
     // widgets
     void drawPillToggle_(int x, int y, int w, int h, bool on, const char* label);
 };
+
+
+void brain_nav_open_default();

@@ -6,12 +6,18 @@ bool matchloaderExtended = false;
 
 bool guardExtended = false;
 
+bool middlegoalExtended = false;
+
 void toggleMatchLoader() {
     matchloader.set(!matchloaderExtended);
 }
 
 void toggleGuard() {
     guard.set(!guardExtended);
+}
+
+void toggleMiddleGoal() {
+    middlegoal.set(!middlegoalExtended);
 }
 
 void matchloaderTask() {
@@ -49,5 +55,23 @@ void guardTask() {
             }
         }
         wait(20, msec);
+    }
+}
+
+void middlegoalTask() {
+    while (true) {
+        if (master.ButtonB.pressing()) {
+            if (middlegoalExtended) {
+                middlegoal.set(false);
+                wait(200, msec);
+                middlegoalExtended = false;
+            }
+            else {
+                middlegoal.set(true);
+                wait(200, msec);
+                middlegoalExtended = true;
+            }
+        }
+        wait(20, msec); // prevent jamming with debounce
     }
 }

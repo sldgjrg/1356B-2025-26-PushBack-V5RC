@@ -1,5 +1,7 @@
 #include "Hurr-Template/brain_nav.h"
-#include "robot-config.h"   // must declare Brain, motors, etc.
+#include "robot-config.h"
+
+#include <new>
 #include <cstring>
 #include <cstdio>
 #include <cstdint>
@@ -16,8 +18,16 @@ MotorRuntime gRuntime[32];
 int          gRuntimeCount = 0;
 
 static MotorRuntime gSeedRuntime[32];
-static int          gSeedCount = 0;
+static int          gSeedCount     = 0;
 static bool         gRuntimeSeeded = false;
+
+// Helper: find runtime index by alias name
+static int rtIndexByName_(const char* name) {
+  for (int i = 0; i < gRuntimeCount && i < gBindingCount; ++i) {
+    if (std::strcmp(gBindings[i].name, name) == 0) return i;
+  }
+  return -1;
+}
 
 // ------------------------------------------------------------
 //  Build alias → motor* bindings
@@ -26,10 +36,9 @@ static bool         gRuntimeSeeded = false;
 void buildBindings() {
   gBindingCount = 0;
 
-  // These names assume you have these motors declared in robot-config.h
+  // These names assume you have these motors declared in robot-config.h:
   // extern motor LeftFront, LeftMiddle, LeftBack, RightFront, RightMiddle, RightBack;
   // extern motor top_roller, intake;
-  // Add/remove as needed.
 
   gBindings[gBindingCount++] = { "LeftFront",   &LeftFront   };
   gBindings[gBindingCount++] = { "LeftMiddle",  &LeftMiddle  };
@@ -43,14 +52,6 @@ void buildBindings() {
   gBindings[gBindingCount++] = { "intake",      &intake      };
 
   gRuntimeCount = gBindingCount;
-}
-
-// Helper: find runtime index by alias name
-static int rtIndexByName_(const char* name) {
-  for (int i = 0; i < gRuntimeCount && i < gBindingCount; ++i) {
-    if (std::strcmp(gBindings[i].name, name) == 0) return i;
-  }
-  return -1;
 }
 
 // ------------------------------------------------------------
@@ -70,7 +71,7 @@ void seedRuntimeFromConfig() {
   }
   gRuntimeCount = gBindingCount;
 
-  // ==== Hard-coded seed matching your earlier config ====
+  // ==== Hard-coded seed matching your config ====
   auto setSeed = [](const char* name, int port, gearSetting gs, bool reversed) {
     int idx = rtIndexByName_(name);
     if (idx >= 0) {
@@ -80,16 +81,15 @@ void seedRuntimeFromConfig() {
     }
   };
 
-  // From your first robot-config snippet:
   // Left side
-  setSeed("LeftFront",   4, ratio6_1, true);
-  setSeed("LeftMiddle",  5, ratio6_1, false);
-  setSeed("LeftBack",    6, ratio6_1, true);
+  setSeed("LeftFront",   4,  ratio6_1, true);
+  setSeed("LeftMiddle",  5,  ratio6_1, false);
+  setSeed("LeftBack",    6,  ratio6_1, true);
 
   // Right side
-  setSeed("RightFront",  1, ratio6_1, false);
-  setSeed("RightMiddle", 2, ratio6_1, true);
-  setSeed("RightBack",   3, ratio6_1, false);
+  setSeed("RightFront",  1,  ratio6_1, false);
+  setSeed("RightMiddle", 2,  ratio6_1, true);
+  setSeed("RightBack",   3,  ratio6_1, false);
 
   // Top roller and intake
   setSeed("top_roller",  9,  ratio6_1, true);
@@ -185,6 +185,14 @@ bool hotswap_get_gearing_by_alias(const char* aliasName, gearSetting& outGs) {
 
 bool hotswap_is_active() {
   return (gRuntimeCount > 0);
+}
+
+// ------------------------------------------------------------
+//  Discover motors (simple stub for now)
+// ------------------------------------------------------------
+void discoverMotors() {
+  // For now we don't dynamically change MotorInfo here.
+  // Motor::installed() is polled directly in the UI.
 }
 
 // ============================================================
@@ -467,10 +475,10 @@ void BrainNav::drawMotorDetail() {
   auto& mi = motors_[selected_];
   vex::motor* m = mi.m;
 
-  bool ok   = m && m->installed();
-  double tC = ok ? m->temperature(temperatureUnits::celsius) : 0.0;
-  double rpm= ok ? m->velocity(velocityUnits::rpm) : 0.0;
-  double watt=ok ? m->power(powerUnits::watt) : 0.0;
+  bool ok    = m && m->installed();
+  double tC  = ok ? m->temperature(temperatureUnits::celsius) : 0.0;
+  double rpm = ok ? m->velocity(velocityUnits::rpm) : 0.0;
+  double watt= ok ? m->power(powerUnits::watt) : 0.0;
 
   int port = 0;
   if (mi.alias && *mi.alias) {
@@ -479,8 +487,8 @@ void BrainNav::drawMotorDetail() {
   }
   if (port == 0 && ok) port = m->index() + 1;
 
-  bool rev = false;
-  gearSetting gs = ratio6_1;
+  bool        rev = false;
+  gearSetting gs  = ratio6_1;
   if (mi.alias && *mi.alias) {
     bool tmp=false; if (hotswap_get_reverse_by_alias(mi.alias, tmp)) rev = tmp;
     gearSetting gtmp=ratio6_1; if (hotswap_get_gearing_by_alias(mi.alias, gtmp)) gs = gtmp;
@@ -488,14 +496,14 @@ void BrainNav::drawMotorDetail() {
 
   Brain.Screen.setPenColor(black);
   int x = 16, y = headerH_ + 24;
-  Brain.Screen.printAt(x, y,      false, "Name: %s", mi.name ? mi.name : "(unnamed)");
-  Brain.Screen.printAt(x, y + 20, false, "Port: %d", port);
-  Brain.Screen.printAt(x, y + 40, false, "Temp: %.1f C", tC);
-  Brain.Screen.printAt(x, y + 60, false, "RPM:  %.1f", rpm);
-  Brain.Screen.printAt(x, y + 80, false, "Watt: %.2f", watt);
-  Brain.Screen.printAt(x, y + 100,false, "Gearing: %s",
+  Brain.Screen.printAt(x, y,       false, "Name: %s", mi.name ? mi.name : "(unnamed)");
+  Brain.Screen.printAt(x, y + 20,  false, "Port: %d", port);
+  Brain.Screen.printAt(x, y + 40,  false, "Temp: %.1f C", tC);
+  Brain.Screen.printAt(x, y + 60,  false, "RPM:  %.1f", rpm);
+  Brain.Screen.printAt(x, y + 80,  false, "Watt: %.2f", watt);
+  Brain.Screen.printAt(x, y + 100, false, "Gearing: %s",
                        (gs==ratio6_1?"6:1":(gs==ratio18_1?"18:1":"36:1")));
-  Brain.Screen.printAt(x, y + 120,false, "Reversed: %s", rev ? "true" : "false");
+  Brain.Screen.printAt(x, y + 120, false, "Reversed: %s", rev ? "true" : "false");
 
   // Toggle Reverse
   drawPillToggle_(kW - 228, headerH_ + 10, 110, 30, rev, "Reverse");
@@ -585,10 +593,10 @@ void BrainNav::drawConfirmOverlay_(const char* title, const char* body) {
 //  Main UI loop
 // ------------------------------------------------------------
 void BrainNav::open() {
-  screen_ = Screen::Home;
-  selected_ = -1;
+  screen_        = Screen::Home;
+  selected_      = -1;
   pendingAction_ = ConfirmKind::None;
-  pendingInt_ = -1;
+  pendingInt_    = -1;
 
   while (true) {
     // ----- Home -----
@@ -747,9 +755,9 @@ void BrainNav::open() {
       // NO
       if (tappedRect_(kW/2 - 100, kH/2 + 24, 84, 28)) {
         waitForRelease_();
-        if (pendingAction_ == ConfirmKind::Reassign) screen_ = Screen::PortPicker;
-        else if (selected_ >= 0) screen_ = Screen::MotorDetail;
-        else screen_ = Screen::Motors;
+        if (pendingAction_ == ConfirmKind::Reassign)      screen_ = Screen::PortPicker;
+        else if (selected_ >= 0)                          screen_ = Screen::MotorDetail;
+        else                                              screen_ = Screen::Motors;
         pendingAction_ = ConfirmKind::None;
         pendingInt_ = -1;
       }
@@ -793,4 +801,36 @@ void BrainNav::open() {
       task::sleep(30);
     }
   }
+}
+
+// ============================================================
+//           Simple default wiring for your robot config
+// ============================================================
+
+// This MotorInfo list matches the bindings in buildBindings()
+static MotorInfo sDefaultMotors[] = {
+  { &LeftFront,   "LeftFront",   "LeftFront"   },
+  { &LeftMiddle,  "LeftMiddle",  "LeftMiddle"  },
+  { &LeftBack,    "LeftBack",    "LeftBack"    },
+  { &RightFront,  "RightFront",  "RightFront"  },
+  { &RightMiddle, "RightMiddle", "RightMiddle" },
+  { &RightBack,   "RightBack",   "RightBack"   },
+  { &top_roller,  "top_roller",  "top_roller"  },
+  { &intake,      "intake",      "intake"      },
+};
+
+static int sDefaultMotorCount =
+  sizeof(sDefaultMotors) / sizeof(sDefaultMotors[0]);
+
+void brain_nav_open_default() {
+  // make sure runtime is seeded once
+  if (!hotswap_is_active()) {
+    seedRuntimeFromConfig();
+  }
+
+  BrainNav nav(sDefaultMotors,
+               &sDefaultMotorCount,
+               BrainNav::TempThresholds{},
+               discoverMotors);
+  nav.open();
 }

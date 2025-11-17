@@ -18,13 +18,13 @@ inertial imu = inertial(PORT16);
 // digital_in limit_switch = digital_in(Brain.ThreeWirePort.D);
 
 //drivetrain
-motor LeftFront = motor(PORT4, ratio6_1, true);
-motor LeftMiddle = motor(PORT5, ratio6_1, false); 
+motor LeftFront = motor(PORT5, ratio6_1, true);
+motor LeftMiddle = motor(PORT4, ratio6_1, false); 
 motor LeftBack = motor(PORT6, ratio6_1, true);
     
-motor RightFront = motor(PORT1, ratio6_1, false);
-motor RightMiddle = motor(PORT2, ratio6_1, true); 
-motor RightBack = motor(PORT3, ratio6_1, false);
+motor RightFront = motor(PORT2, ratio6_1, false);
+motor RightMiddle = motor(PORT3, ratio6_1, true); 
+motor RightBack = motor(PORT1, ratio6_1, false);
 
 
 
@@ -33,12 +33,13 @@ motor_group RightDrive = motor_group(RightFront, RightMiddle, RightBack);
 motor_group LeftDrive = motor_group(LeftFront, LeftMiddle, LeftBack);
 
 // other motors
-motor top_roller = motor(PORT9, ratio6_1, false);
-motor intake = motor(PORT18, ratio6_1, true);
+motor top_roller = motor(PORT18, ratio6_1, false);
+motor intake = motor(PORT9, ratio6_1, true);
 
 // pneumatics
-digital_out matchloader = digital_out(Brain.ThreeWirePort.C);
+digital_out matchloader = digital_out(Brain.ThreeWirePort.A);
 digital_out guard = digital_out(Brain.ThreeWirePort.B);
+digital_out middlegoal = digital_out(Brain.ThreeWirePort.D);
 
 
 // VEXcode device constructors

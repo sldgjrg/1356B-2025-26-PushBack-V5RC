@@ -106,7 +106,7 @@ bool auto_started = false;
 void pre_auton(void) {
   // Initializing Robot Configuration. DO NOT REMOVE!
   vexcodeInit();
- 
+  
   default_constants();
 
   sdrive::init(
@@ -122,11 +122,14 @@ void pre_auton(void) {
 
   matchloader.set(false);
   guard.set(false);
+  middlegoal.set(false);
 
   intake.setMaxTorque(100, percent);
   intake.setStopping(brake);
   top_roller.setMaxTorque(100, percent);
   top_roller.setStopping(brake); 
+
+  //  brain_nav_open_default();
 
   while(auto_started == false){            
     Brain.Screen.setFillColor(green);
@@ -159,7 +162,7 @@ void autonomous(void) {
   current_auton_selection = 0;
   switch(current_auton_selection){  
     case 0:   //This is the default auton, if you don't select from the brain.
-      s_drive_chain_test();
+      hurrs_auton();
       break;    
     case 1:
       right_side_9();
@@ -188,6 +191,7 @@ void usercontrol(void) {
   thread intakeThread = thread(intakeTask); 
   thread matchloaderThread = thread(matchloaderTask); 
   thread guardThread = thread(guardTask); 
+  thread middlegoalThread = thread(middlegoalTask);
  
   // Brain.Screen.setFillColor(green);
   // Brain.Screen.setPenColor(black);

@@ -178,7 +178,7 @@ void SDrive::s_drive(double inches, double finalHeadingDeg) {
   runProfile_(inches, true, finalHeadingDeg);
 }
 
-// ⭐ Drive to X,Y using shortest-turn arc
+// Drive to X,Y using shortest-turn arc
 void SDrive::s_drive_shortest(double targetX, double targetY) {
 
   double curX = chassis.get_X_position();
