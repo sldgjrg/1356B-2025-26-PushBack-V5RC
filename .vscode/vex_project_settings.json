@@ -1,0 +1,18 @@
+{
+	"project": {
+		"name": "FartNuggets",
+		"slot": 2,
+		"description": "Poop",
+		"platform": "V5",
+		"creationDate": "Tue, 04 Nov 2025 13:53:44 GMT",
+		"language": "cpp",
+		"sdkVersion": "V5_20240802_15_00_00",
+		"cpp": {
+			"includePath": []
+		}
+	},
+	"extension": {
+		"version": "0.7.2025041600",
+		"json": 1
+	}
+}
