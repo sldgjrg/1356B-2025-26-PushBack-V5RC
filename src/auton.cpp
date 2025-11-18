@@ -27,6 +27,12 @@ void s_drive_test(){
 
   // s_drive(10, 90); 
 
+  //   s_drive_chain({
+  //   Command(32, 90),   // drive 32", curve to 90°
+  //   Command(-20, 90),  // immediately back 20", keep 90°
+  //   Command(15)        // then 15" forward, keep current angle
+  // });
+
 
   // 9 block auton
   spinIntake(1);
@@ -89,7 +95,7 @@ void hurrs_auton() {
 
   spinTopRoller(1);
 
-  s_drive(-20);
+  s_drive(-16);
 
   stopTopRoller();
 
@@ -212,6 +218,8 @@ void hurrs_auton2() {
 
 }
 
+
+
 void s_drive_chain_test() {
   default_constants();
 
@@ -244,11 +252,12 @@ void swing_test(){
 
 void full_test(){
   chassis.drive_distance(24);
-  chassis.turn_to_angle(-45);
-  chassis.drive_distance(-36);
-  chassis.right_swing_to_angle(-90);
-  chassis.drive_distance(24);
-  chassis.turn_to_angle(0);
+  chassis.turn_to_angle(-90);
+  chassis.drive_distance(12);
+  chassis.drive_distance(-12);
+  chassis.right_swing_to_angle(90);
+  chassis.drive_distance(22);
+  // chassis.turn_to_angle(0);
 }
 
 void odom_test(){

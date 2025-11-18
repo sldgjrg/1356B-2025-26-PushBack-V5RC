@@ -1,8 +1,24 @@
 #pragma once
 #include "vex.h"
 #include <cmath>
+#include <initializer_list>
 
 namespace sdrive {
+
+// Command for chaining motions
+struct Command {
+  double inches;
+  double headingDeg;
+  bool   useHeading;
+
+  // drive straight, keep heading
+  Command(double dist)
+    : inches(dist), headingDeg(0.0), useHeading(false) {}
+
+  // drive with target heading
+  Command(double dist, double heading)
+    : inches(dist), headingDeg(heading), useHeading(true) {}
+};
 
 class SDrive {
 public:
@@ -18,8 +34,8 @@ public:
                  double maxA_in_s2 = 72.0,
                  double maxJ_in_s3 = 600.0);
 
-  // Heading PD gains
-  void setTurnGains(double kp = 0.07, double kd = 0.0009); // Kp used to be 0.02 but was undershooting just a liiitle bit
+  // Heading PD gains (used for small correction on arc)
+  void setTurnGains(double kp = 0.06, double kd = 0.0);
 
   // S-curve smoothing distance (inches)
   void setSmoothing(double smoothInches = 8.0);
@@ -28,13 +44,16 @@ public:
   void s_drive(double inches);
   void s_drive(double inches, double finalHeadingDeg);
 
+  // Chained motion: smooth sequence of s-drives
+  void s_drive_chain(std::initializer_list<Command> cmds);
+
   // Drive along an arc to a field point (x,y) using shortest heading
   void s_drive_shortest(double targetX, double targetY);
 
 private:
   vex::motor_group& left_;
   vex::motor_group& right_;
-  vex::inertial* imu_;
+  vex::inertial*    imu_;
 
   double wheelDiamIn_;
   double gearRatio_;
@@ -53,7 +72,12 @@ private:
   double avgDistanceIn_() const;
   double headingDeg_() const;
 
-  void runProfile_(double targetInches, bool useHeading, double finalHeadingDeg);
+  // stopAtEnd: whether to actively brake/hold at the end
+  void runProfile_(double targetInches,
+                   bool useHeading,
+                   double finalHeadingDeg,
+                   bool stopAtEnd);
+
   void commandVel_(double v_in_s, double omega_deg_s);
 
   static double clamp(double v, double lo, double hi) {
@@ -73,8 +97,14 @@ void set_limits(double maxV_in_s, double maxA_in_s2, double maxJ_in_s3);
 void set_turn_gains(double kp, double kd);
 void set_smoothing(double smoothInches);
 
+// Single moves
 void s_drive(double inches);
 void s_drive(double inches, double finalHeadingDeg);
+
+// Chained moves
+void s_drive_chain(std::initializer_list<Command> cmds);
+
+// To field coordinate
 void s_drive_shortest(double x, double y);
 
 } // namespace sdrive

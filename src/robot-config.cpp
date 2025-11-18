@@ -12,7 +12,7 @@ using code = vision::code;
 // A global instance of brain used for printing to the V5 Brain screen
 brain  Brain;
 controller master = controller(primary);
-inertial imu = inertial(PORT16);
+inertial imu = inertial(PORT21);
 
 //sensors
 // digital_in limit_switch = digital_in(Brain.ThreeWirePort.D);

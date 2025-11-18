@@ -162,7 +162,8 @@ void autonomous(void) {
   current_auton_selection = 0;
   switch(current_auton_selection){  
     case 0:   //This is the default auton, if you don't select from the brain.
-      hurrs_auton();
+    // full_test();  
+    hurrs_auton();
       break;    
     case 1:
       right_side_9();
