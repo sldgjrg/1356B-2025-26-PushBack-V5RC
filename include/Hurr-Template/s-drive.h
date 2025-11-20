@@ -5,17 +5,14 @@
 
 namespace sdrive {
 
-// Command for chaining motions
 struct Command {
   double inches;
   double headingDeg;
   bool   useHeading;
 
-  // drive straight, keep heading
   Command(double dist)
     : inches(dist), headingDeg(0.0), useHeading(false) {}
 
-  // drive with target heading
   Command(double dist, double heading)
     : inches(dist), headingDeg(heading), useHeading(true) {}
 };
@@ -29,25 +26,17 @@ public:
          double gearRatio,
          double trackWidthIn);
 
-  // Configure motion limits (linear)
-  void setLimits(double maxV_in_s = 36.0,
-                 double maxA_in_s2 = 72.0,
-                 double maxJ_in_s3 = 600.0);
+  void setLimits(double maxV_in_s  = 80.0,
+                 double maxA_in_s2 = 250.0,
+                 double maxJ_in_s3 = 3000.0);
 
-  // Heading PD gains (used for small correction on arc)
   void setTurnGains(double kp = 0.06, double kd = 0.0);
-
-  // S-curve smoothing distance (inches)
   void setSmoothing(double smoothInches = 8.0);
 
-  // Basic moves
   void s_drive(double inches);
   void s_drive(double inches, double finalHeadingDeg);
 
-  // Chained motion: smooth sequence of s-drives
   void s_drive_chain(std::initializer_list<Command> cmds);
-
-  // Drive along an arc to a field point (x,y) using shortest heading
   void s_drive_shortest(double targetX, double targetY);
 
 private:
@@ -72,7 +61,6 @@ private:
   double avgDistanceIn_() const;
   double headingDeg_() const;
 
-  // stopAtEnd: whether to actively brake/hold at the end
   void runProfile_(double targetInches,
                    bool useHeading,
                    double finalHeadingDeg,
@@ -85,7 +73,6 @@ private:
   }
 };
 
-// ------------------ Global access functions ------------------
 void init(vex::motor_group& left,
           vex::motor_group& right,
           vex::inertial* imu = nullptr,
@@ -97,14 +84,9 @@ void set_limits(double maxV_in_s, double maxA_in_s2, double maxJ_in_s3);
 void set_turn_gains(double kp, double kd);
 void set_smoothing(double smoothInches);
 
-// Single moves
 void s_drive(double inches);
 void s_drive(double inches, double finalHeadingDeg);
-
-// Chained moves
 void s_drive_chain(std::initializer_list<Command> cmds);
-
-// To field coordinate
 void s_drive_shortest(double x, double y);
 
 } // namespace sdrive

@@ -110,15 +110,21 @@ void pre_auton(void) {
   default_constants();
 
   sdrive::init(
-    LeftDrive,          // your left motor_group
-    RightDrive,         // your right motor_group
-    &imu,          // your inertial sensor object name
+    LeftDrive,          //  left motor_group
+    RightDrive,         //  right motor_group
+    &imu,          //  inertial sensor object name
     3.25,               // wheel diameter in inches
     0.8,                // gear ratio (wheel rev / motor rev)
     11.0                // track width in inches (distance between wheels)
   );
 
-  sdrive::set_limits(60, 200, 2000);
+sdrive::set_limits(
+  80.0,   // maxV in/s
+  250.0,  // maxA in/s^2
+  3000.0  // maxJ (not heavily used but kept)
+);
+
+
 
   matchloader.set(false);
   guard.set(false);
@@ -162,8 +168,9 @@ void autonomous(void) {
   current_auton_selection = 0;
   switch(current_auton_selection){  
     case 0:   //This is the default auton, if you don't select from the brain.
-    // full_test();  
-    hurrs_auton();
+      test_functions();
+      // prog_skills();  
+      //hurrs_auton();
       break;    
     case 1:
       right_side_9();

@@ -1,6 +1,7 @@
 #include "Hurr-Template/s-drive.h"
-#include "JAR-Template/drive.h"   // for chassis.get_X_position(), etc.
+#include "JAR-Template/drive.h"
 #include "vex.h"
+#include <cmath>
 
 using namespace vex;
 
@@ -14,49 +15,38 @@ static double wrap(double deg) {
   return deg;
 }
 
-static constexpr double PI          = 3.14159265358979323846;
-// Distance calibration: internal target = commanded * DIST_SCALE.
-static constexpr double DIST_SCALE  = 0.95;
+static constexpr double PI = 3.14159265358979323846;
+static constexpr double DIST_SCALE = 0.95;
+static constexpr double T_MIN      = 0.35;
+static constexpr double DEADZONE   = 0.50;
 
-// ---------------- Constructor ----------------
+// ----------------------------------------------------------
+// Constructor
+// ----------------------------------------------------------
 SDrive::SDrive(motor_group& left,
                motor_group& right,
                inertial* imu,
                double wheelDiamIn,
                double gearRatio,
                double trackWidthIn)
-  : left_(left),
-    right_(right),
-    imu_(imu),
-    wheelDiamIn_(wheelDiamIn),
-    gearRatio_(gearRatio),
-    trackWidthIn_(trackWidthIn),
-    maxV_(36.0),
-    maxA_(72.0),
-    maxJ_(600.0),
+  : left_(left), right_(right), imu_(imu),
+    wheelDiamIn_(wheelDiamIn), gearRatio_(gearRatio), trackWidthIn_(trackWidthIn),
+    maxV_(80.0), maxA_(250.0), maxJ_(3000.0),
     smoothK_(8.0),
-    // heading correction while moving
-    kTurnP_(0.06),
-    kTurnD_(0.0) {}
+    kTurnP_(0.06), kTurnD_(0.0)
+{}
 
-// ---------------- Settings ----------------
-void SDrive::setLimits(double v, double a, double j) {
+// ----------------------------------------------------------
+void SDrive::setLimits(double v,double a,double j){
   maxV_ = v;
   maxA_ = a;
   maxJ_ = j;
 }
+void SDrive::setTurnGains(double kp,double kd){ kTurnP_ = kp; kTurnD_ = kd; }
+void SDrive::setSmoothing(double s){ smoothK_ = s; }
 
-void SDrive::setTurnGains(double kp, double kd) {
-  kTurnP_ = kp;
-  kTurnD_ = kd;
-}
-
-void SDrive::setSmoothing(double s) {
-  smoothK_ = s;
-}
-
-// ---------------- Helpers ----------------
-void SDrive::resetEncoders_() {
+// ----------------------------------------------------------
+void SDrive::resetEncoders_(){
   left_.resetPosition();
   right_.resetPosition();
 }
@@ -71,230 +61,201 @@ double SDrive::avgDistanceIn_() const {
   return wheelRevToInches_((L + R) * 0.5);
 }
 
-// Use continuous rotation
 double SDrive::headingDeg_() const {
   return imu_ ? imu_->rotation() : 0.0;
 }
 
-// Convert linear + angular → wheel speeds
-void SDrive::commandVel_(double v_in_s, double omega_deg_s) {
-  double omega = omega_deg_s * PI / 180.0;
-  double vDiff = -omega * (trackWidthIn_ / 2.0);
+void SDrive::commandVel_(double v_in_s,double omega_deg_s){
+  double omega = omega_deg_s * PI/180.0;
+  double vDiff = omega * (trackWidthIn_/2.0);
 
   double vL = v_in_s - vDiff;
   double vR = v_in_s + vDiff;
 
-  auto toRPM = [&](double v) {
-    return (v / (PI * wheelDiamIn_)) * 60.0 / gearRatio_;
+  auto toRPM = [&](double x){
+    return (x/(PI*wheelDiamIn_))*60.0/gearRatio_;
   };
 
   left_.spin(fwd, toRPM(vL), velocityUnits::rpm);
-  right_.spin(fwd, toRPM(vR), velocityUnits::rpm);
+  right_.spin(fwd,toRPM(vR), velocityUnits::rpm);
 }
 
-// ---------------- Motion Profile (geometric arc + scaled angle & distance) ----------------
+// ----------------------------------------------------------
+// TANH S-CURVE + BOOSTED ROCKET TAKEOFF
+// ----------------------------------------------------------
 void SDrive::runProfile_(double targetInches,
                          bool useHeading,
-                         double finalHeadingDeg,
-                         bool stopAtEnd) {
+                         double finalHeading,
+                         bool stopAtEnd){
 
   resetEncoders_();
 
-  // Distance scaling: internally aim a bit different so field distance matches better.
   double rawD = fabs(targetInches);
   double D    = rawD * DIST_SCALE;
-  double sign = (targetInches >= 0.0) ? 1.0 : -1.0;
+  double sign = (targetInches >= 0) ? 1.0 : -1.0;
 
-  if (D < 0.05) {
-    if (stopAtEnd) {
-      left_.stop(brakeType::hold);
-      right_.stop(brakeType::hold);
-    }
+  if (D < 0.05){
+    commandVel_(0,0);
+    left_.stop(brakeType::coast);
+    right_.stop(brakeType::coast);
     return;
   }
 
-  const double dt          = 0.01;
-  const int    dt_ms       = 10;
+  const double dt = 0.01;
+  const int dtms  = 10;
 
-  const double distTol     = 0.25;  // inches
-  const double headingDead = 0.5;   // deg: ignore tiny error near the end
-
-  // Heading geometry
-  double h0       = headingDeg_();
-  double rawDelta = 0.0;  // real target change
-  double arcDelta = 0.0;  // exaggerated change for arc shape
-  double hGoal    = h0;   // actual angle we want to end near (for shaping only now)
+  // ------- Heading geometry --------
+  double h0 = headingDeg_();
+  double arcDelta = 0;
 
   if (useHeading && imu_) {
-    rawDelta = wrap(finalHeadingDeg - h0);
-    const double ARC_SCALE = 1.3; // scalar to fight angular undershoot / start arc earlier
-    arcDelta = rawDelta * ARC_SCALE;
-    hGoal    = h0 + rawDelta;
+    arcDelta = wrap(finalHeading - h0) * 1.3;
   }
 
-  // Geometric curvature: Δθ_arc / D (radians per inch)
-  double curvature = 0.0;
-  if (useHeading && fabs(arcDelta) > 0.5 && D > 1.0) {
-    double deltaH_rad = arcDelta * PI / 180.0;
-    curvature = deltaH_rad / D;    // rad / inch
-  } else {
-    curvature = 0.0; // effectively straight or tiny heading change
-  }
+  double curvature = 0;
+  if (fabs(arcDelta) > 0.5 && D > 1.0)
+    curvature = (arcDelta * PI/180.0) / D;
 
-  double v_cmd   = 0.0;
-  double a_cmd   = 0.0;
+  // ------- TANH PARAMETERS --------
+  const double k = 3.0;   // main curve steepness
+
+  auto f = [k](double u){
+    double x = k*(1 - 2*u);
+    return 0.5 * (1 - std::tanh(x));
+  };
+
+  auto fp = [k](double u){
+    double x = k*(1 - 2*u);
+    double c = std::cosh(x);
+    return k / (c*c);
+  };
+
+  double f0 = f(0);
+  double f1 = f(1);
+  double fSpan = f1 - f0;
+
+  // Duration based on velocity + accel limits
+  double T_v = D * k / (maxV_ * fSpan);
+  double T_a = std::sqrt(std::max(2.0 * D / maxA_, 0.01));
+  double T   = std::max({T_v, T_a, T_MIN});
+
+  double t = 0.0;
   double prevErr = 0.0;
 
-  while (true) {
+  // ----------------------------------------------------------
+  // MAIN LOOP
+  // ----------------------------------------------------------
+  while(true){
 
     double x   = fabs(avgDistanceIn_());
     double rem = D - x;
     if (rem < 0) rem = 0;
 
-    // 👉 EXIT CONDITION: only distance. Once we're there, we are DONE.
-    if (rem <= distTol)
-      break;
+    if (t >= T || rem <= DEADZONE) break;
 
-    double hMeas = headingDeg_();
+    double u = t/T;
+    u = (u < 0 ? 0 : (u > 1 ? 1 : u));
 
-    double p = (D > 0.01) ? clamp(x / D, 0.0, 1.0) : 1.0;
+    // Base tanh velocity
+    double v_mag = (D/fSpan) * fp(u) / T;
 
-    // Smooth S-curve speed
-    double v_target = maxV_ * tanh(rem / smoothK_);
-    v_target *= sign;
+    // ------------------------------------------------------
+    // 🔥 ROCKET BOOST: triple acceleration during first 20%
+    // ------------------------------------------------------
+    if (u < 0.20) {
+      double boost = (0.20 - u)/0.20;  // fades 1→0
+      v_mag *= (1.0 + 2.5 * boost);    // 250% more accel at start
+    }
 
-    // Limit acceleration/jerk
-    double desired_a = (v_target - v_cmd) / dt;
-    double da = clamp(desired_a - a_cmd, -maxJ_ * dt, maxJ_ * dt);
+    if (v_mag > maxV_) v_mag = maxV_;
 
-    a_cmd += da;
-    a_cmd = clamp(a_cmd, -maxA_, maxA_);
-    v_cmd += a_cmd * dt;
+    double v_cmd = v_mag * sign;
 
-    double omega_cmd = 0.0;
-
+    // ---- Heading correction ----
+    double omega_cmd = 0;
     if (useHeading && imu_) {
-      // Geometric open-loop arc using arcDelta
-      double omega_ff_rad = v_cmd * curvature;               // rad/s
-      double omega_ff_deg = omega_ff_rad * 180.0 / PI;       // deg/s
 
-      // Expected heading along the ARC (scaled)
-      double expectedH = h0 + ( (D > 0.01) ? (x / D) * arcDelta : arcDelta );
-      double err       = wrap(expectedH - hMeas);
-      double deriv     = (err - prevErr) / dt;
-      prevErr          = err;
+      double p = (D > 0.01) ? std::min(1.0, x/D) : 1.0;
+      double expectedH = h0 + arcDelta * p;
 
-      // Deadband so we don't micro-correct near the end
-      if (fabs(err) < headingDead && p > 0.8) {
-        err   = 0.0;
-        deriv = 0.0;
+      double err = wrap(expectedH - headingDeg_());
+      double deriv = (err - prevErr)/dt;
+      prevErr = err;
+
+      // turn off correction at low speed
+      if (fabs(v_cmd) < 8 || rem < 3) {
+        err = deriv = 0;
       }
 
-      double omega_fb  = kTurnP_ * err + kTurnD_ * deriv;
+      double omega_ff = v_cmd * curvature * 180.0/PI;
+      double omega_fb = kTurnP_*err + kTurnD_*deriv;
 
-      omega_cmd = omega_ff_deg + omega_fb;
-
-      // Clamp to reasonable turn speed
-      const double maxTurn = 230.0;
-      if (omega_cmd >  maxTurn) omega_cmd =  maxTurn;
-      if (omega_cmd < -maxTurn) omega_cmd = -maxTurn;
+      omega_cmd = clamp(omega_ff + omega_fb, -230, 230);
     }
 
     commandVel_(v_cmd, omega_cmd);
-    wait(dt_ms, msec);
+
+    wait(dtms, msec);
+    t += dt;
   }
 
-  // We decided we are DONE; just stop and move on
-  if (stopAtEnd) {
+  // ----------------------------------------------------------
+  // SMOOTH END
+  // ----------------------------------------------------------
+  commandVel_(0,0);
+  left_.stop(brakeType::coast);
+  right_.stop(brakeType::coast);
+
+  wait(200, msec);
+
+  if (stopAtEnd){
     left_.stop(brakeType::hold);
     right_.stop(brakeType::hold);
-  } else {
-    left_.stop(brakeType::coast);
-    right_.stop(brakeType::coast);
   }
 }
 
-// ---------------- Public Single-Move API ----------------
-void SDrive::s_drive(double inches) {
+// ---------------------------------------------------------------------------
+void SDrive::s_drive(double inches){
   runProfile_(inches, false, 0.0, true);
 }
-
-void SDrive::s_drive(double inches, double finalHeadingDeg) {
+void SDrive::s_drive(double inches, double finalHeadingDeg){
   runProfile_(inches, true, finalHeadingDeg, true);
 }
 
-// ---------------- Chained S-Drive (smooth succession) ----------------
-void SDrive::s_drive_chain(std::initializer_list<Command> cmds) {
-
-  if (cmds.size() == 0) return;
-
-  size_t idx = 0;
-  size_t n   = cmds.size();
-
-  for (const auto& cmd : cmds) {
-    bool last = (idx == n - 1);
-
-    runProfile_(cmd.inches,
-                cmd.useHeading,
-                cmd.headingDeg,
-                last);          // only last step does a firm hold
-
+void SDrive::s_drive_chain(std::initializer_list<Command> cmds){
+  size_t idx=0, n=cmds.size();
+  for (auto& c : cmds){
+    runProfile_(c.inches, c.useHeading, c.headingDeg, (idx==n-1));
     idx++;
   }
 }
 
-// ---------------- Drive to X,Y using shortest heading ----------------
-void SDrive::s_drive_shortest(double targetX, double targetY) {
+void SDrive::s_drive_shortest(double tx,double ty){
+  double cx = chassis.get_X_position();
+  double cy = chassis.get_Y_position();
 
-  double curX = chassis.get_X_position();
-  double curY = chassis.get_Y_position();
+  double dx = tx - cx;
+  double dy = ty - cy;
 
-  double dx = targetX - curX;
-  double dy = targetY - curY;
+  double dist = std::sqrt(dx*dx + dy*dy);
+  double h = wrap(std::atan2(dy,dx)*180.0/PI);
 
-  double distance = sqrt(dx*dx + dy*dy);
-  double heading  = wrap(atan2(dy, dx) * 180.0 / PI);
-
-  runProfile_(distance, true, heading, true);
+  runProfile_(dist, true, h, true);
 }
 
-// ---------------- Global wrappers ----------------
-void init(motor_group& left,
-          motor_group& right,
-          inertial* imu,
-          double wheelDiamIn,
-          double gearRatio,
-          double trackWidthIn) {
-  static SDrive inst(left, right, imu, wheelDiamIn, gearRatio, trackWidthIn);
+// ---------------------------------------------------------------------------
+void init(vex::motor_group& left,motor_group& right,inertial* imu,
+          double wd,double gr,double tw){
+  static SDrive inst(left,right,imu,wd,gr,tw);
   G = &inst;
 }
 
-void set_limits(double v, double a, double j) {
-  if (G) G->setLimits(v,a,j);
-}
-
-void set_turn_gains(double kp, double kd) {
-  if (G) G->setTurnGains(kp,kd);
-}
-
-void set_smoothing(double s) {
-  if (G) G->setSmoothing(s);
-}
-
-void s_drive(double x) {
-  if (G) G->s_drive(x);
-}
-
-void s_drive(double x, double deg) {
-  if (G) G->s_drive(x, deg);
-}
-
-void s_drive_chain(std::initializer_list<Command> cmds) {
-  if (G) G->s_drive_chain(cmds);
-}
-
-void s_drive_shortest(double x, double y) {
-  if (G) G->s_drive_shortest(x, y);
-}
+void set_limits(double v,double a,double j){ if(G) G->setLimits(v,a,j); }
+void set_turn_gains(double kp,double kd){ if(G) G->setTurnGains(kp,kd); }
+void set_smoothing(double s){ if(G) G->setSmoothing(s); }
+void s_drive(double x){ if(G) G->s_drive(x); }
+void s_drive(double x,double d){ if(G) G->s_drive(x,d); }
+void s_drive_chain(std::initializer_list<Command> c){ if(G) G->s_drive_chain(c); }
+void s_drive_shortest(double x,double y){ if(G) G->s_drive_shortest(x,y); }
 
 } // namespace sdrive

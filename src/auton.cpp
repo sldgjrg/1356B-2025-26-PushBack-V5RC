@@ -292,10 +292,10 @@ void holonomic_odom_test(){
 }
 
 void default_constants(){
-  chassis.set_drive_constants(9, 0.8, 0.03, 0.8, 3);
-  chassis.set_heading_constants(6, 0.3, 0.03, 5, 3);
+  chassis.set_drive_constants(8, 0.8, 0.03, 0.8, 3);
+  chassis.set_heading_constants(6, .4, 0, 11, 0);
 
-  chassis.set_turn_constants(9, 0.30, 0.03, 1.56, 15);
+  chassis.set_turn_constants(7, 0.30, 0.03, 1.56, 15);
   chassis.set_swing_constants(9, 0.30, 0.05, 2, 15);
 
   chassis.set_drive_exit_conditions(2, 200, 4000);
@@ -307,7 +307,11 @@ void test_functions (){
   default_constants();
   chassis.set_coordinates(0, 0, 0);
 
-  chassis.drive_distance(30);
+  using namespace sdrive;
+
+  s_drive(62);
+
+  // chassis.turn_to_angle(145);
 }
 
 void right_side_9 (){
@@ -318,6 +322,131 @@ void right_side_9 (){
 
 void prog_skills (){
   default_constants();
+
   chassis.set_coordinates(0, 0, 0);
+
+  chassis.drive_distance(34.5);
+
+  chassis.turn_to_angle(90);
+
+  //toggleMatchLoader();
+
+  spinIntake(1);
+
+  chassis.drive_max_voltage = 5;
+
+  wait(.5, sec);
+
+  chassis.drive_distance(13);
+
+  wait(2.5, sec);
+
+  chassis.drive_distance(-30);
+
+  spinTopRoller(1);
+
+  //toggleGuard();
+
+  //wait(2.5, sec);
+
+  stopTopRoller();
+
+  chassis.drive_distance(6);
+
+  // toggleMatchLoader;
+  //toggleGuard;
+
+  chassis.turn_to_angle(210);
+
+  chassis.drive_max_voltage = 4;
+
+  spinIntake(1);
+
+  chassis.drive_distance(24);
+
+  wait(.25, sec);
+
+  chassis.drive_distance(4);
+
+  wait(.25, sec);
+
+  chassis.drive_distance(-26);
+
+  chassis.turn_to_angle(90);
+
+  // toggleGuard();
+
+  chassis.drive_distance(-7);
+
+  spinTopRoller(1);
+
+  // wait(2.5, sec);
+
+  chassis.drive_distance(14);
   
+  chassis.turn_to_angle(175.8);
+
+  chassis.drive_max_voltage = 7;
+  chassis.drive_distance(69);
+
+  chassis.turn_to_angle(180);
+
+  // second half
+  
+  chassis.drive_distance(34.5);
+
+  chassis.turn_to_angle(90);
+
+  //toggleMatchLoader();
+
+  spinIntake(1);
+
+  chassis.drive_max_voltage = 5;
+
+  wait(.5, sec);
+
+  chassis.drive_distance(13);
+
+  wait(2.5, sec);
+
+  chassis.drive_distance(-30);
+
+  spinTopRoller(1);
+
+  //toggleGuard();
+
+  //wait(2.5, sec);
+
+  stopTopRoller();
+
+  chassis.drive_distance(6);
+
+  // toggleMatchLoader;
+  //toggleGuard;
+
+  chassis.turn_to_angle(30);
+
+  chassis.drive_max_voltage = 4;
+
+  spinIntake(1);
+
+  chassis.drive_distance(24);
+
+  wait(.25, sec);
+
+  chassis.drive_distance(4);
+
+  wait(.25, sec);
+
+  chassis.drive_distance(-26);
+
+  chassis.turn_to_angle(90);
+
+  // toggleGuard();
+
+  chassis.drive_distance(-7);
+
+  spinTopRoller(1);
+
+  // wait(2.5, sec);
 }
