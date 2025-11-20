@@ -119,10 +119,12 @@ void pre_auton(void) {
   );
 
 sdrive::set_limits(
-  80.0,   // maxV in/s
-  250.0,  // maxA in/s^2
-  3000.0  // maxJ (not heavily used but kept)
+    180.0,   // max velocity in/s
+    650.0,   // max acceleration in/s^2
+    12000.0  // jerk
 );
+
+
 
 
 
