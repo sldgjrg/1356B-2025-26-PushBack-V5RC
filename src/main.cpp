@@ -4,6 +4,8 @@
 
 #include "Hurr-Template/brain_nav.h"
 
+#include <iostream>
+
 
 using namespace vex;
 competition Competition;
@@ -170,15 +172,14 @@ void autonomous(void) {
   current_auton_selection = 0;
   switch(current_auton_selection){  
     case 0:   //This is the default auton, if you don't select from the brain.
-      test_functions();
-      // prog_skills();  
-      //hurrs_auton();
+      // test_functions();
+      prog_total();  
       break;    
     case 1:
       right_side_9();
       break;
     case 2:
-      prog_skills();
+      prog_total();
       break;
  }
 }

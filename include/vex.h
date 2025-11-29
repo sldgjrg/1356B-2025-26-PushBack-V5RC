@@ -24,6 +24,7 @@
 #include "JAR-Template/PID.h"
 #include "JAR-Template/drive.h"
 #include "autons.h"
+#include "Hurr-Template/jbug-drive.h"
 
 #include "Subsystems/intake.h"
 #include "Subsystems/pneumatics.h"

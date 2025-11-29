@@ -25,4 +25,9 @@ void holonomic_odom_test();
 
 void test_functions();
 void right_side_9();
-void prog_skills();
+void prog_p1();
+void prog_p2();
+void prog_p3();
+void prog_p4();
+void prog_total();
+// void prog_skills();

@@ -10,14 +10,17 @@ bool middlegoalExtended = false;
 
 void toggleMatchLoader() {
     matchloader.set(!matchloaderExtended);
+    matchloaderExtended = !matchloaderExtended;
 }
 
 void toggleGuard() {
     guard.set(!guardExtended);
+    guardExtended = !guardExtended;
 }
 
 void toggleMiddleGoal() {
     middlegoal.set(!middlegoalExtended);
+    middlegoalExtended = !middlegoalExtended;
 }
 
 void matchloaderTask() {

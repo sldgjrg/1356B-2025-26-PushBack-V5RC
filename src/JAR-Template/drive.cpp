@@ -165,6 +165,57 @@ void Drive::drive_distance(float distance, float heading, float drive_max_voltag
   RightDrive.stop(hold);
 }
 
+void Drive::sigmoid_drive(float distance){
+  sigmoid_drive(distance, desired_heading, drive_max_voltage, heading_max_voltage, drive_settle_error, drive_settle_time, drive_timeout, drive_kp, drive_ki, drive_kd, drive_starti, heading_kp, heading_ki, heading_kd, heading_starti);
+}
+
+void Drive::sigmoid_drive(float distance, float heading){
+  sigmoid_drive(distance, heading, drive_max_voltage, heading_max_voltage, drive_settle_error, drive_settle_time, drive_timeout, drive_kp, drive_ki, drive_kd, drive_starti, heading_kp, heading_ki, heading_kd, heading_starti);
+}
+
+void Drive::sigmoid_drive(float distance, float heading, float drive_max_voltage, float heading_max_voltage){
+  sigmoid_drive(distance, heading, drive_max_voltage, heading_max_voltage, drive_settle_error, drive_settle_time, drive_timeout, drive_kp, drive_ki, drive_kd, drive_starti, heading_kp, heading_ki, heading_kd, heading_starti);
+}
+
+void Drive::sigmoid_drive(float distance, float heading, float drive_max_voltage, float heading_max_voltage, float drive_settle_error, float drive_settle_time, float drive_timeout){
+  sigmoid_drive(distance, heading, drive_max_voltage, heading_max_voltage, drive_settle_error, drive_settle_time, drive_timeout, drive_kp, drive_ki, drive_kd, drive_starti, heading_kp, heading_ki, heading_kd, heading_starti);
+}
+
+void Drive::sigmoid_drive(float distance, float heading, float drive_max_voltage, float heading_max_voltage, float drive_settle_error, float drive_settle_time, float drive_timeout, float drive_kp, float drive_ki, float drive_kd, float drive_starti, float heading_kp, float heading_ki, float heading_kd, float heading_starti){
+  desired_heading = heading;
+  PID headingPID(reduce_negative_180_to_180(heading - get_absolute_heading()), heading_kp, heading_ki, heading_kd, heading_starti);
+  LeftDrive.resetPosition();
+  RightDrive.resetPosition();
+
+  float drive_output;
+  float current_position;
+  float k = pow(distance, 1.0/2.0); 
+  float MIN_VOLTAGE = 1.8;
+
+  while(true) {
+    current_position = (get_left_position_in()+get_right_position_in())/2.0;
+    float heading_error = reduce_negative_180_to_180(heading - get_absolute_heading());
+    float heading_output = headingPID.compute(heading_error);
+
+    if(current_position < distance * 0.5) {
+        drive_output = drive_max_voltage / (1 + exp(-k * (current_position - 0.02 * distance))); 
+        drive_output = std::max(drive_output, MIN_VOLTAGE);
+        chassis.drive_with_voltage(drive_output + heading_output, drive_output - heading_output);
+    } 
+    else {
+        drive_output = drive_max_voltage / (1 + exp(0.4 * (current_position - 0.75 * distance)));
+        chassis.drive_with_voltage(drive_output + heading_output, drive_output - heading_output);
+    } 
+    task::sleep(10);
+
+    if(current_position >= distance) {
+        break;
+    }
+  }
+  LeftDrive.stop(hold);
+  RightDrive.stop(hold);
+}
+
 void Drive::left_swing_to_angle(float angle){
   left_swing_to_angle(angle, swing_max_voltage, swing_settle_error, swing_settle_time, swing_timeout, swing_kp, swing_ki, swing_kd, swing_starti);
 }
