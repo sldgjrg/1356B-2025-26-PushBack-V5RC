@@ -173,6 +173,10 @@ void Drive::sigmoid_drive(float distance, float heading){
   sigmoid_drive(distance, heading, drive_max_voltage, heading_max_voltage, drive_settle_error, drive_settle_time, drive_timeout, drive_kp, drive_ki, drive_kd, drive_starti, heading_kp, heading_ki, heading_kd, heading_starti);
 }
 
+void Drive::sigmoid_drive(float distance, float heading, float drive_max_voltage){
+  sigmoid_drive(distance, heading, drive_max_voltage, heading_max_voltage, drive_settle_error, drive_settle_time, drive_timeout, drive_kp, drive_ki, drive_kd, drive_starti, heading_kp, heading_ki, heading_kd, heading_starti);
+}
+
 void Drive::sigmoid_drive(float distance, float heading, float drive_max_voltage, float heading_max_voltage){
   sigmoid_drive(distance, heading, drive_max_voltage, heading_max_voltage, drive_settle_error, drive_settle_time, drive_timeout, drive_kp, drive_ki, drive_kd, drive_starti, heading_kp, heading_ki, heading_kd, heading_starti);
 }
@@ -189,26 +193,29 @@ void Drive::sigmoid_drive(float distance, float heading, float drive_max_voltage
 
   float drive_output;
   float current_position;
-  float k = pow(distance, 1.0/2.0); 
-  float MIN_VOLTAGE = 1.8;
+  float k1 = pow(abs(distance), 1.0/2.0); 
+  float k2 = 0.4;
+  float offset_1 = 0.02;
+  float offset_2 = 0.74;
+  float MIN_VOLTAGE = 3.0;
 
-  while(true) {
-    current_position = (get_left_position_in()+get_right_position_in())/2.0;
+  while(1) {
+    current_position = abs((get_left_position_in()+get_right_position_in())/2.0);
     float heading_error = reduce_negative_180_to_180(heading - get_absolute_heading());
     float heading_output = headingPID.compute(heading_error);
 
-    if(current_position < distance * 0.5) {
-        drive_output = drive_max_voltage / (1 + exp(-k * (current_position - 0.02 * distance))); 
+    if(current_position < abs(distance) * 0.5) {
+        drive_output = drive_max_voltage / (1 + exp(-k1 * (current_position - offset_1 * abs(distance)))); 
         drive_output = std::max(drive_output, MIN_VOLTAGE);
-        chassis.drive_with_voltage(drive_output + heading_output, drive_output - heading_output);
+        chassis.drive_with_voltage(drive_output * (distance / abs(distance)) + heading_output, drive_output * (distance / abs(distance)) - heading_output);
     } 
     else {
-        drive_output = drive_max_voltage / (1 + exp(0.4 * (current_position - 0.75 * distance)));
-        chassis.drive_with_voltage(drive_output + heading_output, drive_output - heading_output);
+        drive_output = drive_max_voltage / (1 + exp(k2 * (current_position - offset_2 * abs(distance))));
+        chassis.drive_with_voltage(drive_output * (distance / abs(distance)) + heading_output, drive_output * (distance / abs(distance)) - heading_output);
     } 
     task::sleep(10);
 
-    if(current_position >= distance) {
+    if(current_position >= abs(distance)) {
         break;
     }
   }

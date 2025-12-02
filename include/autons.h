@@ -30,4 +30,8 @@ void prog_p2();
 void prog_p3();
 void prog_p4();
 void prog_total();
-// void prog_skills();
+void prog_skills();
+
+void test_sigmoid();
+
+void nine_ball();
